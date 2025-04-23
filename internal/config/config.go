@@ -15,8 +15,8 @@ type Config struct {
 }
 
 func (c *Config) ConnectionString() string {
-	return fmt.Sprintf("postgresql://%s:%d/%s?user=%s&password=%s",
-		c.DatabaseHost, c.DatabasePort, c.DatabaseName, c.DatabaseUser, c.DatabasePass)
+	return fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
+		c.DatabaseHost, c.DatabasePort, c.DatabaseUser, c.DatabasePass, c.DatabaseName)
 }
 
 func MustReadConfig() Config {
