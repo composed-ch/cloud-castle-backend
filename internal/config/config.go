@@ -19,6 +19,11 @@ func (c *Config) ConnectionString() string {
 		c.DatabaseHost, c.DatabasePort, c.DatabaseUser, c.DatabasePass, c.DatabaseName)
 }
 
+func (c *Config) BuildDatabaseURL() string {
+	return fmt.Sprintf("postgres://%s:%s@%s:%d/%s",
+		c.DatabaseUser, c.DatabasePass, c.DatabaseHost, c.DatabasePort, c.DatabaseName)
+}
+
 func MustReadConfig() Config {
 	var config Config
 	env.Must(config, env.Parse(&config))

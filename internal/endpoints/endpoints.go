@@ -1,6 +1,7 @@
 package endpoints
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -8,26 +9,34 @@ import (
 	"os"
 
 	"github.com/composed-ch/cloud-castle-backend/internal/auth"
+	"github.com/composed-ch/cloud-castle-backend/internal/config"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"golang.org/x/crypto/bcrypt"
 )
 
-type AuthRequest struct {
+type Stateful struct {
+	Pool *pgxpool.Pool
+}
+
+func NewStateful(cfg *config.Config) (*Stateful, error) {
+	pool, err := pgxpool.New(context.Background(), cfg.BuildDatabaseURL())
+	if err != nil {
+		return nil, fmt.Errorf("create connection pool: %w", err)
+	}
+	return &Stateful{Pool: pool}, nil
+}
+
+type authRequest struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
 }
 
-type AuthResponse struct {
+type authResponse struct {
 	Token string `json:"token"`
 }
 
-var (
-	logins map[string]string = map[string]string{
-		"alice": "topsecret",
-		"bob":   "mossecret",
-	}
-)
-
-func Login(w http.ResponseWriter, r *http.Request) {
-	var authPayload AuthRequest
+func (s *Stateful) Login(w http.ResponseWriter, r *http.Request) {
+	var authPayload authRequest
 	payload, err := io.ReadAll(r.Body)
 	if err != nil {
 		w.WriteHeader(http.StatusBadGateway)
@@ -37,8 +46,16 @@ func Login(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadGateway)
 		return
 	}
-	password, ok := logins[authPayload.Username]
-	if !ok || password != authPayload.Password {
+	var hashed string
+	err = s.Pool.QueryRow(
+		context.Background(),
+		"select password from account where name = $1",
+		authPayload.Username).Scan(&hashed)
+	if err != nil {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+	if err = bcrypt.CompareHashAndPassword([]byte(hashed), []byte(authPayload.Password)); err != nil {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
@@ -48,7 +65,7 @@ func Login(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	if tokenData, err := json.Marshal(AuthResponse{Token: tokenStr}); err != nil {
+	if tokenData, err := json.Marshal(authResponse{Token: tokenStr}); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 	} else {
 		w.Write(tokenData)

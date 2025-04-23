@@ -22,12 +22,9 @@ curl -v localhost:8080/protected -H "Authorization: Bearer $(cat token.txt)"
 
 ## TODO
 
-- [ ] DB Access & Migration
-- [ ] user management with hashed passwords
-- [ ] utily to register user
 - [ ] store Exoscale token
 - [ ] API
-    - GET /isntances
+    - GET /instances
     - GET /instances/:id/state
     - GET /instances/:id/start
     - GET /instances/:id/stop
