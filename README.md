@@ -1,5 +1,11 @@
 # Cloud Castle Backend (in Go)
 
+## Setup
+
+Install goose (for SQL migrations):
+
+    go install github.com/pressly/goose/v3/cmd/goose@latest
+
 ## Usage
 
 Login (and store token):
@@ -15,7 +21,6 @@ curl -v localhost:8080/protected -H "Authorization: Bearer $(cat token.txt)"
 ```
 
 ## TODO
-TODO
 
 - [ ] DB Access & Migration
 - [ ] user management with hashed passwords
