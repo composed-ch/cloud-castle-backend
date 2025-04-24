@@ -29,6 +29,7 @@ type Instance struct {
 	Name   string            `json:"name"`
 	Labels map[string]string `json:"labels"`
 	IP     string            `json:"ip"`
+	State  string            `json:"state"`
 }
 
 func (a *APIAccess) GetInstances() ([]*Instance, error) {
@@ -47,6 +48,7 @@ func (a *APIAccess) GetInstances() ([]*Instance, error) {
 			Name:   instance.Name,
 			Labels: instance.Labels,
 			IP:     instance.PublicIP.To4().String(),
+			State:  string(instance.State),
 		})
 	}
 	return instances, nil
