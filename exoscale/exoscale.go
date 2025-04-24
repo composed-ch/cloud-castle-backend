@@ -36,20 +36,46 @@ func (a *APIAccess) GetInstances() ([]*Instance, error) {
 	instances := make([]*Instance, 0)
 	client, err := v3.NewClient(a.Creds)
 	if err != nil {
-		return nil, fmt.Errorf("create client: %v", err)
+		return nil, fmt.Errorf("create client: %w", err)
 	}
 	resp, err := client.ListInstances(context.Background())
 	if err != nil {
-		return nil, fmt.Errorf("list instancers: %v", err)
+		return nil, fmt.Errorf("list instancers: %w", err)
 	}
 	for _, instance := range resp.Instances {
-		instances = append(instances, &Instance{
-			ID:     instance.ID.String(),
-			Name:   instance.Name,
-			Labels: instance.Labels,
-			IP:     instance.PublicIP.To4().String(),
-			State:  string(instance.State),
-		})
+		instances = append(instances, fromListInstance(&instance))
 	}
 	return instances, nil
+}
+
+func (a *APIAccess) GetInstance(id string) (*Instance, error) {
+	client, err := v3.NewClient(a.Creds)
+	if err != nil {
+		return nil, fmt.Errorf("create client: %w", err)
+	}
+	instance, err := client.GetInstance(context.Background(), v3.UUID(id))
+	if err != nil {
+		return nil, fmt.Errorf("get instance: %w", err)
+	}
+	return fromInstance(instance), nil
+}
+
+func fromListInstance(instance *v3.ListInstancesResponseInstances) *Instance {
+	return &Instance{
+		ID:     instance.ID.String(),
+		Name:   instance.Name,
+		Labels: instance.Labels,
+		IP:     instance.PublicIP.To4().String(),
+		State:  string(instance.State),
+	}
+}
+
+func fromInstance(instance *v3.Instance) *Instance {
+	return &Instance{
+		ID:     instance.ID.String(),
+		Name:   instance.Name,
+		Labels: instance.Labels,
+		IP:     instance.PublicIP.To4().String(),
+		State:  string(instance.State),
+	}
 }

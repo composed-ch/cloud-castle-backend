@@ -88,17 +88,8 @@ func (s *Stateful) Login(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Stateful) GetInstances(w http.ResponseWriter, r *http.Request) {
-	authorization := r.Header.Get("Authorization")
-	subject, err := auth.ExtractSubject(authorization)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "extract subject: %v", err)
-		w.WriteHeader(http.StatusUnauthorized)
-		return
-	}
-	api, err := s.GetAPIAccess(subject)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "get API access: %v", err)
-		w.WriteHeader(http.StatusUnauthorized)
+	api := s.getAPIAccess(w, r)
+	if api == nil {
 		return
 	}
 	instances, err := api.GetInstances()
@@ -114,4 +105,40 @@ func (s *Stateful) GetInstances(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Write(payload)
+}
+
+func (s *Stateful) GetInstanceState(w http.ResponseWriter, r *http.Request) {
+	api := s.getAPIAccess(w, r)
+	if api == nil {
+		return
+	}
+	id := r.PathValue("id")
+	instance, err := api.GetInstance(id)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "get instance: %v", err)
+		w.WriteHeader(http.StatusInternalServerError)
+	}
+	payload, err := json.Marshal(map[string]string{"state": instance.State})
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "marshal instance payload; %v", err)
+		w.WriteHeader(http.StatusInternalServerError)
+	}
+	w.Write(payload)
+}
+
+func (s *Stateful) getAPIAccess(w http.ResponseWriter, r *http.Request) *exoscale.APIAccess {
+	authorization := r.Header.Get("Authorization")
+	subject, err := auth.ExtractSubject(authorization)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "extract subject: %v", err)
+		w.WriteHeader(http.StatusUnauthorized)
+		return nil
+	}
+	api, err := s.GetAPIAccess(subject)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "get API access: %v", err)
+		w.WriteHeader(http.StatusUnauthorized)
+		return nil
+	}
+	return api
 }
