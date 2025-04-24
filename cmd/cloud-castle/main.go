@@ -19,6 +19,6 @@ func main() {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /login", state.Login)
-	mux.HandleFunc("GET /protected", auth.Authenticated(endpoints.Blah))
+	mux.HandleFunc("GET /instances", auth.Authenticated(state.GetInstances))
 	http.ListenAndServe("localhost:8080", mux)
 }
