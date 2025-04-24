@@ -55,9 +55,33 @@ func (a *APIAccess) GetInstance(id string) (*Instance, error) {
 	}
 	instance, err := client.GetInstance(context.Background(), v3.UUID(id))
 	if err != nil {
-		return nil, fmt.Errorf("get instance: %w", err)
+		return nil, fmt.Errorf("get instance %s: %w", id, err)
 	}
 	return fromInstance(instance), nil
+}
+
+func (a *APIAccess) StartInstance(id string) error {
+	client, err := v3.NewClient(a.Creds)
+	if err != nil {
+		return fmt.Errorf("create client: %w", err)
+	}
+	_, err = client.StartInstance(context.Background(), v3.UUID(id), v3.StartInstanceRequest{})
+	if err != nil {
+		return fmt.Errorf("start instance %s: %w", id, err)
+	}
+	return nil
+}
+
+func (a *APIAccess) StopInstance(id string) error {
+	client, err := v3.NewClient(a.Creds)
+	if err != nil {
+		return fmt.Errorf("create client: %w", err)
+	}
+	_, err = client.StopInstance(context.Background(), v3.UUID(id))
+	if err != nil {
+		return fmt.Errorf("start instance %s: %w", id, err)
+	}
+	return nil
 }
 
 func fromListInstance(instance *v3.ListInstancesResponseInstances) *Instance {

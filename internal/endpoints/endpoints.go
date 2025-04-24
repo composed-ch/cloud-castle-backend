@@ -126,6 +126,36 @@ func (s *Stateful) GetInstanceState(w http.ResponseWriter, r *http.Request) {
 	w.Write(payload)
 }
 
+func (s *Stateful) StartInstance(w http.ResponseWriter, r *http.Request) {
+	api := s.getAPIAccess(w, r)
+	if api == nil {
+		return
+	}
+	id := r.PathValue("id")
+	err := api.StartInstance(id)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(200)
+}
+
+func (s *Stateful) StopInstance(w http.ResponseWriter, r *http.Request) {
+	api := s.getAPIAccess(w, r)
+	if api == nil {
+		return
+	}
+	id := r.PathValue("id")
+	err := api.StopInstance(id)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(200)
+}
+
 func (s *Stateful) getAPIAccess(w http.ResponseWriter, r *http.Request) *exoscale.APIAccess {
 	authorization := r.Header.Get("Authorization")
 	subject, err := auth.ExtractSubject(authorization)
