@@ -12,10 +12,6 @@ type Config struct {
 	DatabaseName string `env:"DATABASE_NAME" envDefault:"cloud_castle"`
 	DatabaseUser string `env:"DATABASE_USER" envDefault:"cloud_castle"`
 	DatabasePass string `env:"DATABASE_PASS" envDefault:"topsecret"`
-
-	ExoscaleZone      string `env:"EXOSCALE_ZONE"`
-	ExoscaleAPIKey    string `env:"EXOSCALE_API_KEY"`
-	ExoscaleAPISecret string `env:"EXOSCALE_API_SECRET"`
 }
 
 func (c *Config) ConnectionString() string {
