@@ -20,6 +20,9 @@ func main() {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /login", state.Login)
-	mux.HandleFunc("GET /protected", auth.Authenticated(endpoints.Blah))
+	mux.HandleFunc("GET /instances", auth.Authenticated(state.GetInstances))
+	mux.HandleFunc("GET /instance/{id}/state", auth.Authenticated(state.GetInstanceState))
+	mux.HandleFunc("GET /instance/{id}/start", auth.Authenticated(state.StartInstance))
+	mux.HandleFunc("GET /instance/{id}/stop", auth.Authenticated(state.StopInstance))
 	http.ListenAndServe("localhost:8080", middleware.AllowCORS(mux))
 }
