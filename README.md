@@ -68,3 +68,10 @@ Restart=always
 [Install]
 WantedBy=multi-user.target
 ```
+
+## TODO
+
+- store tenant for every key and user
+- for users with the student role, filter the VMs by their owner (same value as username)
+- bind key to tenant rather than to user
+- use tenant key for operation on VMs for students
