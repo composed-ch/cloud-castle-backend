@@ -11,7 +11,7 @@ Install goose (for SQL migrations):
 Register a user:
 
 ```sh
-go run cmd/register-user/main.go -username joe.doe --role teacher --password topsecret
+go run cmd/register-user/main.go -username joe.doe -role teacher -password topsecret
 ```
 
 Register an API key for a user:
@@ -68,10 +68,3 @@ Restart=always
 [Install]
 WantedBy=multi-user.target
 ```
-
-## TODO
-
-- [ ] API
-    - GET /instances/:id/state
-    - GET /instances/:id/start
-    - GET /instances/:id/stop
