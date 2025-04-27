@@ -8,6 +8,18 @@ Install goose (for SQL migrations):
 
 ## Usage
 
+Register a user:
+
+```sh
+go run cmd/register-user/main.go -username joe.doe --role teacher --password topsecret
+```
+
+Register an API key for a user:
+
+```sh
+go run cmd/add-api-key/main.go -username joe.doe -zone ch-gva-2 -key EXO… -secret SECRET…
+```
+
 Login (and store token):
 
 ```sh
