@@ -15,6 +15,7 @@ func main() {
 	zone := flag.String("zone", "", "the zone for which the key is used")
 	apiKey := flag.String("key", "", "API key")
 	apiSecret := flag.String("secret", "", "API secret")
+	tenant := flag.String("tenant", "", "Exoscale tenant (account name)")
 	flag.Parse()
 
 	cfg := config.MustReadConfig()
@@ -37,8 +38,8 @@ func main() {
 	}
 
 	_, err = conn.Exec(context.Background(),
-		"insert into api_key (account_id, zone, api_key, api_secret) values ($1, $2, $3, $4)",
-		accountId, zone, apiKey, apiSecret)
+		"insert into api_key (zone, api_key, api_secret, tenant) values ($1, $2, $3, $4)",
+		zone, apiKey, apiSecret, tenant)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "inserting api key: %v", err)
 		os.Exit(1)

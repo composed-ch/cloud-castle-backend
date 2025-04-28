@@ -15,6 +15,7 @@ func main() {
 	username := flag.String("username", "", "the unique name of the user")
 	password := flag.String("password", "", "the password used for authentication")
 	role := flag.String("role", "student", "user role: 'student' or 'teacher'")
+	tenant := flag.String("tenant", "", "Exoscale tenant (account name)")
 	flag.Parse()
 
 	cfg := config.MustReadConfig()
@@ -32,8 +33,8 @@ func main() {
 	}
 
 	_, err = conn.Exec(context.Background(),
-		"insert into account (name, role, password) values ($1, $2, $3)",
-		username, role, hashed)
+		"insert into account (name, role, password, tenant) values ($1, $2, $3, $4)",
+		username, role, hashed, tenant)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "insert user: %v", err)
 		os.Exit(1)
