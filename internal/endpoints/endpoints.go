@@ -32,13 +32,13 @@ func (s *Stateful) GetAPIAccess(username string) (*exoscale.APIAccess, error) {
 	err := s.Pool.QueryRow(context.Background(),
 		`select zone, api_key, api_secret
 		from api_key
-		inner join account on api_key.account_id = account.id
+		inner join account on api_key.tenant = account.tenant
 		where account.name = $1
 		limit 1`, username).Scan(&zone, &key, &secret)
 	if err != nil {
 		return nil, fmt.Errorf("get API key for %s: %w", username, err)
 	}
-	return exoscale.NewAPIAccess(zone, key, secret), nil
+	return exoscale.NewAPIAccess(username, zone, key, secret), nil
 }
 
 type authRequest struct {
@@ -92,7 +92,7 @@ func (s *Stateful) GetInstances(w http.ResponseWriter, r *http.Request) {
 	if api == nil {
 		return
 	}
-	instances, err := api.GetInstances()
+	instances, err := api.GetOwnInstances(api.Username)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "get instances: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)

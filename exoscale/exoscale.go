@@ -9,18 +9,20 @@ import (
 )
 
 type APIAccess struct {
-	Zone   string
-	Key    string
-	Secret string
-	Creds  *credentials.Credentials
+	Username string
+	Zone     string
+	Key      string
+	Secret   string
+	Creds    *credentials.Credentials
 }
 
-func NewAPIAccess(zone, key, secret string) *APIAccess {
+func NewAPIAccess(username, zone, key, secret string) *APIAccess {
 	return &APIAccess{
-		Zone:   zone,
-		Key:    key,
-		Secret: secret,
-		Creds:  credentials.NewStaticCredentials(key, secret),
+		Username: username,
+		Zone:     zone,
+		Key:      key,
+		Secret:   secret,
+		Creds:    credentials.NewStaticCredentials(key, secret),
 	}
 }
 
@@ -46,6 +48,22 @@ func (a *APIAccess) GetInstances() ([]*Instance, error) {
 		instances = append(instances, fromListInstance(&instance))
 	}
 	return instances, nil
+}
+
+func (a *APIAccess) GetOwnInstances(username string) ([]*Instance, error) {
+	instances, err := a.GetInstances()
+	if err != nil {
+		return nil, fmt.Errorf("get own instances of %s: %w", username, err)
+	}
+	ownInstances := make([]*Instance, 0)
+	for _, instance := range instances {
+		if owner, ok := instance.Labels["owner"]; ok {
+			if owner == username {
+				ownInstances = append(ownInstances, instance)
+			}
+		}
+	}
+	return ownInstances, nil
 }
 
 func (a *APIAccess) GetInstance(id string) (*Instance, error) {
