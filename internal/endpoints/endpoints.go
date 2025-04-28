@@ -117,6 +117,12 @@ func (s *Stateful) GetInstanceState(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "get instance: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	owner, ok := instance.Labels["owner"]
+	if !ok || owner != api.Username {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
 	}
 	payload, err := json.Marshal(map[string]string{"state": instance.State})
 	if err != nil {
@@ -132,7 +138,18 @@ func (s *Stateful) StartInstance(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	id := r.PathValue("id")
-	err := api.StartInstance(id)
+	instance, err := api.GetInstance(id)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "get instance: %v", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	owner, ok := instance.Labels["owner"]
+	if !ok || owner != api.Username {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}	
+	err = api.StartInstance(id)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -147,7 +164,18 @@ func (s *Stateful) StopInstance(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	id := r.PathValue("id")
-	err := api.StopInstance(id)
+	instance, err := api.GetInstance(id)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "get instance: %v", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	owner, ok := instance.Labels["owner"]
+	if !ok || owner != api.Username {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}	
+	err = api.StopInstance(id)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		w.WriteHeader(http.StatusInternalServerError)
