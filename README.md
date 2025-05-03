@@ -62,6 +62,7 @@ After=network.target
 [Service]
 ExecStart=/home/cloud_castle/bin/cloud_castle
 WorkingDirectory=/home/cloud_castle
+EnvironmentFile=…
 Type=simple
 Restart=always
 
@@ -71,7 +72,5 @@ WantedBy=multi-user.target
 
 ## TODO
 
-- store tenant for every key and user
-- for users with the student role, filter the VMs by their owner (same value as username)
-- bind key to tenant rather than to user
-- use tenant key for operation on VMs for students
+- for users with the teacher role, show all VMs
+- remove username argument from register key script
