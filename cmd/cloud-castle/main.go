@@ -19,6 +19,7 @@ func main() {
 	}
 
 	mux := http.NewServeMux()
+	mux.HandleFunc("GET /canary", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("OK")) })
 	mux.HandleFunc("POST /login", state.Login)
 	mux.HandleFunc("GET /instances", auth.Authenticated(state.GetInstances))
 	mux.HandleFunc("GET /instance/{id}/state", auth.Authenticated(state.GetInstanceState))
