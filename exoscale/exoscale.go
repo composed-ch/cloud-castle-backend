@@ -34,9 +34,13 @@ type Instance struct {
 	State  string            `json:"state"`
 }
 
+func (a *APIAccess) GetClient() (*v3.Client, error) {
+	return v3.NewClient(a.Creds, v3.ClientOptWithEndpoint(v3.Endpoint(fmt.Sprintf("https://api-%s.exoscale.com/v2", a.Zone))))
+}
+
 func (a *APIAccess) GetInstances() ([]*Instance, error) {
+	client, err := a.GetClient()
 	instances := make([]*Instance, 0)
-	client, err := v3.NewClient(a.Creds)
 	if err != nil {
 		return nil, fmt.Errorf("create client: %w", err)
 	}
@@ -67,7 +71,7 @@ func (a *APIAccess) GetOwnInstances(username string) ([]*Instance, error) {
 }
 
 func (a *APIAccess) GetInstance(id string) (*Instance, error) {
-	client, err := v3.NewClient(a.Creds)
+	client, err := a.GetClient()
 	if err != nil {
 		return nil, fmt.Errorf("create client: %w", err)
 	}
@@ -79,7 +83,7 @@ func (a *APIAccess) GetInstance(id string) (*Instance, error) {
 }
 
 func (a *APIAccess) StartInstance(id string) error {
-	client, err := v3.NewClient(a.Creds)
+	client, err := a.GetClient()
 	if err != nil {
 		return fmt.Errorf("create client: %w", err)
 	}
@@ -91,7 +95,7 @@ func (a *APIAccess) StartInstance(id string) error {
 }
 
 func (a *APIAccess) StopInstance(id string) error {
-	client, err := v3.NewClient(a.Creds)
+	client, err := a.GetClient()
 	if err != nil {
 		return fmt.Errorf("create client: %w", err)
 	}
