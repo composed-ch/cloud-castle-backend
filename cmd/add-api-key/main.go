@@ -22,7 +22,7 @@ func main() {
 	url := cfg.BuildDatabaseURL()
 	conn, err := pgx.Connect(context.Background(), url)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "connect to database: %s", err)
+		fmt.Fprintf(os.Stderr, "connect to database: %s\n", err)
 		os.Exit(1)
 	}
 	defer conn.Close(context.Background())
@@ -33,7 +33,7 @@ func main() {
 		"select id from account where name = $1",
 		username).Scan(&accountId)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "selecting account id by username: %v", err)
+		fmt.Fprintf(os.Stderr, "selecting account id by username: %v\n", err)
 		os.Exit(1)
 	}
 
@@ -41,7 +41,7 @@ func main() {
 		"insert into api_key (zone, api_key, api_secret, tenant) values ($1, $2, $3, $4)",
 		zone, apiKey, apiSecret, tenant)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "inserting api key: %v", err)
+		fmt.Fprintf(os.Stderr, "inserting api key: %v\n", err)
 		os.Exit(1)
 	}
 }

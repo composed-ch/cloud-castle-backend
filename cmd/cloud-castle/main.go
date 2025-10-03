@@ -15,7 +15,7 @@ func main() {
 	cfg := config.MustReadConfig()
 	state, err := endpoints.NewStateful(&cfg)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "initializing state: %v", err)
+		fmt.Fprintf(os.Stderr, "initializing state: %v\n", err)
 	}
 
 	mux := http.NewServeMux()

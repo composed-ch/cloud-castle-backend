@@ -22,21 +22,21 @@ func main() {
 	url := cfg.BuildDatabaseURL()
 	conn, err := pgx.Connect(context.Background(), url)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "connect to database: %s", err)
+		fmt.Fprintf(os.Stderr, "connect to database: %s\n", err)
 		os.Exit(1)
 	}
 	defer conn.Close(context.Background())
 
 	hashed, err := bcrypt.GenerateFromPassword([]byte(*password), bcrypt.DefaultCost)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "hash password: %v", err)
+		fmt.Fprintf(os.Stderr, "hash password: %v\n", err)
 	}
 
 	_, err = conn.Exec(context.Background(),
 		"insert into account (name, role, password, tenant) values ($1, $2, $3, $4)",
 		username, role, hashed, tenant)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "insert user: %v", err)
+		fmt.Fprintf(os.Stderr, "insert user: %v\n", err)
 		os.Exit(1)
 	}
 }
