@@ -2,6 +2,10 @@
 
 ## Setup
 
+Install Cloud Castle:
+
+    go install github.com/composed-ch/cloud-castle-backend/cmd/cloud-castle@latest
+
 Install goose (for SQL migrations):
 
     go install github.com/pressly/goose/v3/cmd/goose@latest
