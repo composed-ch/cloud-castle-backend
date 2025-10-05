@@ -15,7 +15,13 @@ Install goose (for SQL migrations):
 Register a user:
 
 ```sh
-go run cmd/register-user/main.go -username joe.doe -role teacher -password topsecret
+go run cmd/register-user/main.go -username joe.doe -role teacher -password topsecret -tenant m346
+```
+
+Register users from a group YAML file:
+
+```sh
+go run cmd/register-group/main.go -file group.yaml -password topsecret -role student -tenant m346
 ```
 
 Register an API key for a user:
@@ -74,7 +80,18 @@ Restart=always
 WantedBy=multi-user.target
 ```
 
-## TODO
+## Goose
 
-- for users with the teacher role, show all VMs
-- remove username argument from register key script
+See [usage](https://github.com/pressly/goose?tab=readme-ov-file#usage) for detailed instructions.
+
+Generate a new migration file:
+
+```sh
+goose create add_email_to_account sql
+```
+
+Apply the migration:
+
+```sh
+goose up
+```

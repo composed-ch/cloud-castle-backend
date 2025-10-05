@@ -61,6 +61,7 @@ func main() {
 			continue
 		}
 		// FIXME: email needed! (additional db field)
+		// FIXME: duplicate check!
 	}
 }
 

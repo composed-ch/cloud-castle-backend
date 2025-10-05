@@ -38,6 +38,7 @@ func main() {
 	}
 
 	// FIXME: email needed! (additional db field)
+	// FIXME: duplicate check!
 	_, err = conn.Exec(context.Background(),
 		"insert into account (name, role, password, tenant) values ($1, $2, $3, $4)",
 		username, role, hashedPassword, tenant)
