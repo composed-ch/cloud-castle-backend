@@ -1,8 +1,10 @@
 package auth
 
 import (
+	"crypto/rand"
 	"errors"
 	"fmt"
+	"math/big"
 	"net/http"
 	"regexp"
 	"strings"
@@ -61,4 +63,26 @@ func ExtractSubject(authorization string) (string, error) {
 		return "", fmt.Errorf("get subject from token: %w", err)
 	}
 	return subject, nil
+}
+
+func RandomPasswordAlnum(n uint) (string, error) {
+	buf := make([]rune, n)
+	alphabet := make([]rune, 0)
+	for c := '0'; c <= '9'; c++ {
+		alphabet = append(alphabet, c)
+	}
+	for c := 'A'; c <= 'Z'; c++ {
+		alphabet = append(alphabet, c)
+	}
+	for c := 'a'; c <= 'z'; c++ {
+		alphabet = append(alphabet, c)
+	}
+	for i := uint(0); i < n; i++ {
+		x, err := rand.Int(rand.Reader, big.NewInt(int64(len(alphabet))))
+		if err != nil {
+			return "", fmt.Errorf("get random number: %v", err)
+		}
+		buf[i] = alphabet[x.Int64()]
+	}
+	return string(buf), nil
 }

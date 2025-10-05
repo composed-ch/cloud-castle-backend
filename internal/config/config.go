@@ -1,9 +1,12 @@
 package config
 
 import (
+	"context"
 	"fmt"
+	"os"
 
 	"github.com/caarlos0/env/v11"
+	"github.com/jackc/pgx/v5"
 )
 
 type Config struct {
@@ -28,4 +31,15 @@ func MustReadConfig() Config {
 	var config Config
 	env.Must(config, env.Parse(&config))
 	return config
+}
+
+func MustGetDBConecction() *pgx.Conn {
+	cfg := MustReadConfig()
+	url := cfg.BuildDatabaseURL()
+	conn, err := pgx.Connect(context.Background(), url)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "connect to database: %s\n", url)
+		os.Exit(1)
+	}
+	return conn
 }

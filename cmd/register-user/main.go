@@ -18,6 +18,7 @@ func main() {
 	tenant := flag.String("tenant", "", "Exoscale tenant (account name)")
 	flag.Parse()
 
+	// TODO: use config.MustGetDBConnection
 	cfg := config.MustReadConfig()
 	url := cfg.BuildDatabaseURL()
 	conn, err := pgx.Connect(context.Background(), url)
