@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/composed-ch/cloud-castle-backend/internal/auth"
 	"github.com/composed-ch/cloud-castle-backend/internal/config"
-	"github.com/jackc/pgx/v5"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -18,24 +18,29 @@ func main() {
 	tenant := flag.String("tenant", "", "Exoscale tenant (account name)")
 	flag.Parse()
 
-	// TODO: use config.MustGetDBConnection
-	cfg := config.MustReadConfig()
-	url := cfg.BuildDatabaseURL()
-	conn, err := pgx.Connect(context.Background(), url)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "connect to database: %s\n", err)
-		os.Exit(1)
-	}
+	conn := config.MustGetDBConecction()
 	defer conn.Close(context.Background())
 
-	hashed, err := bcrypt.GenerateFromPassword([]byte(*password), bcrypt.DefaultCost)
+	var userPassword string
+	var err error
+	if *password == "" {
+		userPassword, err = auth.RandomPasswordAlnum(32)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "generate random password: %v\n", err)
+		}
+	} else {
+		userPassword = *password
+	}
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(userPassword), bcrypt.DefaultCost)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "hash password: %v\n", err)
+		os.Exit(1)
 	}
 
+	// FIXME: email needed! (additional db field)
 	_, err = conn.Exec(context.Background(),
 		"insert into account (name, role, password, tenant) values ($1, $2, $3, $4)",
-		username, role, hashed, tenant)
+		username, role, hashedPassword, tenant)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "insert user: %v\n", err)
 		os.Exit(1)
