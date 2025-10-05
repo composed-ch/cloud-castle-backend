@@ -55,20 +55,18 @@ func main() {
 			fmt.Fprintf(os.Stderr, "hash password for user %v, skipping: %v\n", user, err)
 			continue
 		}
-		err = insertUser(conn, user.Name, *role, string(hashedPassword), *tenant)
+		err = insertUser(conn, user.Name, *role, string(hashedPassword), *tenant, user.Email)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "insert user %v: %v\n", user, err)
 			continue
 		}
-		// FIXME: email needed! (additional db field)
-		// FIXME: duplicate check!
 	}
 }
 
-func insertUser(conn *pgx.Conn, name, role, hashedPassword, tenant string) error {
+func insertUser(conn *pgx.Conn, name, role, hashedPassword, tenant, email string) error {
 	_, err := conn.Exec(context.Background(),
-		"insert into account (name, role, password, tenant) values ($1, $2, $3, $4)",
-		name, role, hashedPassword, tenant)
+		"insert into account (name, role, password, tenant, email) values ($1, $2, $3, $4, $5)",
+		name, role, hashedPassword, tenant, email)
 	if err != nil {
 		return fmt.Errorf("insert user: %v", err)
 	}
