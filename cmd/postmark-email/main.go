@@ -7,18 +7,12 @@ import (
 	"log"
 	"net/http"
 	"os"
+
+	"github.com/composed-ch/cloud-castle-backend/internal/mailing"
 )
 
-type Email struct {
-	From          string
-	To            string
-	Subject       string
-	HTMLBody      string `json:"HtmlBody"`
-	MessageStream string
-}
-
 func main() {
-	body := Email{
+	body := mailing.Email{
 		From:          "patrick.bucher@composed.ch",
 		To:            "patrick.bucher@composed.ch",
 		Subject:       "Cloud Castle: Dein neues Passwort",

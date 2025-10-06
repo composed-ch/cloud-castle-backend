@@ -10,11 +10,12 @@ import (
 )
 
 type Config struct {
-	DatabaseHost string `env:"DATABASE_HOST" envDefault:"localhost"`
-	DatabasePort uint16 `env:"DATABASE_PORT" envDefault:"5432"`
-	DatabaseName string `env:"DATABASE_NAME" envDefault:"cloud_castle"`
-	DatabaseUser string `env:"DATABASE_USER" envDefault:"cloud_castle"`
-	DatabasePass string `env:"DATABASE_PASS" envDefault:"topsecret"`
+	DatabaseHost  string `env:"DATABASE_HOST" envDefault:"localhost"`
+	DatabasePort  uint16 `env:"DATABASE_PORT" envDefault:"5432"`
+	DatabaseName  string `env:"DATABASE_NAME" envDefault:"cloud_castle"`
+	DatabaseUser  string `env:"DATABASE_USER" envDefault:"cloud_castle"`
+	DatabasePass  string `env:"DATABASE_PASS" envDefault:"topsecret"`
+	PostmarkToken string `env:"POSTMARK_TOKEN" envDefault:"missingToken"`
 }
 
 func (c *Config) ConnectionString() string {
