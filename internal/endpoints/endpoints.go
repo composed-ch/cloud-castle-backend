@@ -78,6 +78,7 @@ func (s *Stateful) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err = bcrypt.CompareHashAndPassword([]byte(hashed), []byte(authPayload.Password)); err != nil {
+		fmt.Fprintf(os.Stderr, "login attempt for user %s failed: %v\n", authPayload.Username, err)
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
@@ -90,6 +91,7 @@ func (s *Stateful) Login(w http.ResponseWriter, r *http.Request) {
 	if tokenData, err := json.Marshal(authResponse{Token: tokenStr}); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 	} else {
+		fmt.Fprintf(os.Stderr, "successful login attempt for user %s\n", authPayload.Username)
 		w.Write(tokenData)
 	}
 }
@@ -162,6 +164,7 @@ func (s *Stateful) StartInstance(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+	fmt.Fprintf(os.Stderr, "user %s started instance %s\n", owner, id)
 	w.WriteHeader(200)
 }
 
@@ -188,6 +191,7 @@ func (s *Stateful) StopInstance(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+	fmt.Fprintf(os.Stderr, "user %s stopped instance %s\n", owner, id)
 	w.WriteHeader(200)
 }
 
