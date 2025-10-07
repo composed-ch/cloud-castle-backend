@@ -215,6 +215,7 @@ func (s *Stateful) ResetPassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var created sql.NullTime
+	hasExistingRequest := false
 	err = s.Pool.QueryRow(context.Background(), "select max(created) from password_reset where account_id = $1", accountId).Scan(&created)
 	if err == nil && created.Valid && created.Time.Add(time.Minute*5).After(time.Now()) {
 		fmt.Fprintf(os.Stderr, "password reset request coming in too soon for %s\n", payload.Email)
@@ -224,6 +225,8 @@ func (s *Stateful) ResetPassword(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(os.Stderr, "query for existing password reset requests for %s: %v\n", payload.Email, err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
+	} else {
+		hasExistingRequest = true
 	}
 	token, err := auth.RandomPasswordAlnum(64)
 	if err != nil {
@@ -237,11 +240,18 @@ func (s *Stateful) ResetPassword(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	_, err = s.Pool.Exec(context.Background(), "insert into password_reset (account_id, token) values ($1, $2)", accountId, hashedToken)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "insert passwort reset token: %v\n", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
+	if hasExistingRequest {
+		if _, err := s.Pool.Exec(context.Background(), "update password_reset set token = $1 where account_id = $2", hashedToken, accountId); err != nil {
+			fmt.Fprintf(os.Stderr, "update passwort reset token: %v\n", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+	} else {
+		if _, err := s.Pool.Exec(context.Background(), "insert into password_reset (account_id, token) values ($1, $2)", accountId, hashedToken); err != nil {
+			fmt.Fprintf(os.Stderr, "insert passwort reset token: %v\n", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 	}
 	message := mailing.CreatePasswordResetEmail(accountId, payload.Email, token)
 	err = mailing.SendPostmarkEmail(
@@ -257,10 +267,73 @@ func (s *Stateful) ResetPassword(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	fmt.Fprintf(os.Stderr, "sent password reset email to %s", payload.Email)
+	fmt.Fprintf(os.Stderr, "sent password reset email to %s\n", payload.Email)
 }
 func (s *Stateful) NewPassword(w http.ResponseWriter, r *http.Request) {
-	// TODO: implement
+	type Payload struct {
+		Email        string `json:"email"`
+		Token        string `json:"token"`
+		Password     string `json:"password"`
+		Confirmation string `json:"confirmation"`
+	}
+	payload, err := jsonBody[Payload](r)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "unmarshal new password request body: %v\n", err)
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	if payload.Password != payload.Confirmation {
+		fmt.Fprintf(os.Stderr, "user with email %s tried to update password with non-matching confirmation, denied\n", payload.Email)
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	if !auth.SufficientlyStrong(payload.Password) {
+		fmt.Fprintf(os.Stderr, "provided password '%s' is too weak by our standards, rejecting reset\n", payload.Password)
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	var accountId int
+	err = s.Pool.QueryRow(context.Background(), "select id from account where email = $1", payload.Email).Scan(&accountId)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "no account found for email address %s: %v\n", payload.Email, err)
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+	var expires sql.NullTime
+	var token sql.NullString
+	var passwordResetId sql.NullInt64
+	err = s.Pool.QueryRow(context.Background(), "select id, token, expires from password_reset where account_id = $1", accountId).Scan(&passwordResetId, &token, &expires)
+	if err != nil || !expires.Valid || !token.Valid || !passwordResetId.Valid {
+		fmt.Fprintf(os.Stderr, "no password reset request found for accountId %d: %v\n", accountId, err)
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+	if expires.Time.After(time.Now()) {
+		fmt.Fprintf(os.Stderr, "the password reset request with id %d expired at %v\n", passwordResetId.Int64, expires.Time)
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	if err = bcrypt.CompareHashAndPassword([]byte(token.String), []byte(payload.Token)); err != nil {
+		fmt.Fprintf(os.Stderr, "the token provided does not match the one from the database (id: %d): %v", passwordResetId.Int64, err)
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(payload.Password), bcrypt.DefaultCost)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "hashing password %s: %v\n", payload.Password, err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	if _, err := s.Pool.Exec(context.Background(), "update account set password = $1 where id = $2", hashedPassword, accountId); err != nil {
+		fmt.Fprintf(os.Stderr, "update password for account %d: %v\n", accountId, err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	if _, err := s.Pool.Exec(context.Background(), "delete from password_reset where account_id = $1", accountId); err != nil {
+		fmt.Fprintf(os.Stderr, "deleting password reset entries for accountId %d: %v", accountId, err)
+	}
+	fmt.Fprintf(os.Stderr, "updated password for accountId %d\n", accountId)
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (s *Stateful) getAPIAccess(w http.ResponseWriter, r *http.Request) *exoscale.APIAccess {
