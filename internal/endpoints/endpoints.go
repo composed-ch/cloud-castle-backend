@@ -207,11 +207,14 @@ func (s *Stateful) ResetPassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var accountId int
-	err = s.Pool.QueryRow(context.Background(), "select id from account where email = $1", payload.Email).Scan(&accountId)
-	if err != nil {
-		// act as if it worked to prevent guessing attacks
-		fmt.Fprintf(os.Stderr, "password reset: %v\n", err)
-		w.WriteHeader(http.StatusCreated)
+	if err := s.Pool.QueryRow(context.Background(), "select id from account where email = $1", payload.Email).Scan(&accountId); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			fmt.Fprintf(os.Stderr, "no account found for password reset by email %s: %v\n", payload.Email, err)
+			w.WriteHeader(http.StatusCreated)
+		} else {
+			fmt.Fprintf(os.Stderr, "fetch account for password reset by email %s: %v\n", payload.Email, err)
+			w.WriteHeader(http.StatusInternalServerError)
+		}
 		return
 	}
 	var created sql.NullTime
@@ -219,7 +222,7 @@ func (s *Stateful) ResetPassword(w http.ResponseWriter, r *http.Request) {
 	err = s.Pool.QueryRow(context.Background(), "select max(created) from password_reset where account_id = $1", accountId).Scan(&created)
 	if err == nil && created.Valid && created.Time.Add(time.Minute*5).After(time.Now()) {
 		fmt.Fprintf(os.Stderr, "password reset request coming in too soon for %s\n", payload.Email)
-		w.WriteHeader(http.StatusForbidden)
+		w.WriteHeader(http.StatusTooManyRequests)
 		return
 	} else if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		fmt.Fprintf(os.Stderr, "query for existing password reset requests for %s: %v\n", payload.Email, err)
@@ -271,19 +274,13 @@ func (s *Stateful) ResetPassword(w http.ResponseWriter, r *http.Request) {
 }
 func (s *Stateful) NewPassword(w http.ResponseWriter, r *http.Request) {
 	type Payload struct {
-		Email        string `json:"email"`
-		Token        string `json:"token"`
-		Password     string `json:"password"`
-		Confirmation string `json:"confirmation"`
+		Email    string `json:"email"`
+		Token    string `json:"token"`
+		Password string `json:"password"`
 	}
 	payload, err := jsonBody[Payload](r)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "unmarshal new password request body: %v\n", err)
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-	if payload.Password != payload.Confirmation {
-		fmt.Fprintf(os.Stderr, "user with email %s tried to update password with non-matching confirmation, denied\n", payload.Email)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -296,7 +293,7 @@ func (s *Stateful) NewPassword(w http.ResponseWriter, r *http.Request) {
 	err = s.Pool.QueryRow(context.Background(), "select id from account where email = $1", payload.Email).Scan(&accountId)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "no account found for email address %s: %v\n", payload.Email, err)
-		w.WriteHeader(http.StatusNotFound)
+		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 	var expires sql.NullTime
@@ -305,7 +302,7 @@ func (s *Stateful) NewPassword(w http.ResponseWriter, r *http.Request) {
 	err = s.Pool.QueryRow(context.Background(), "select id, token, expires from password_reset where account_id = $1", accountId).Scan(&passwordResetId, &token, &expires)
 	if err != nil || !expires.Valid || !token.Valid || !passwordResetId.Valid {
 		fmt.Fprintf(os.Stderr, "no password reset request found for accountId %d: %v\n", accountId, err)
-		w.WriteHeader(http.StatusNotFound)
+		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 	if expires.Time.After(time.Now()) {
