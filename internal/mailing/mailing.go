@@ -9,6 +9,7 @@ import (
 )
 
 // TODO: consider proper HTML template
+// TODO: read frontend url from environment for proper link
 func CreatePasswordResetEmail(accountId int, email, token string) string {
 	atIndex := strings.Index(email, "@")
 	username := email[:atIndex]

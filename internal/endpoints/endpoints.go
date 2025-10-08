@@ -224,12 +224,12 @@ func (s *Stateful) ResetPassword(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(os.Stderr, "password reset request coming in too soon for %s\n", payload.Email)
 		w.WriteHeader(http.StatusTooManyRequests)
 		return
-	} else if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-		fmt.Fprintf(os.Stderr, "query for existing password reset requests for %s: %v\n", payload.Email, err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	} else {
-		hasExistingRequest = true
+	} else if err != nil {
+		if !errors.Is(err, pgx.ErrNoRows) {
+			fmt.Fprintf(os.Stderr, "query for existing password reset requests for %s: %v\n", payload.Email, err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 	}
 	token, err := auth.RandomPasswordAlnum(64)
 	if err != nil {
@@ -305,7 +305,7 @@ func (s *Stateful) NewPassword(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	if expires.Time.After(time.Now()) {
+	if expires.Time.Before(time.Now()) {
 		fmt.Fprintf(os.Stderr, "the password reset request with id %d expired at %v\n", passwordResetId.Int64, expires.Time)
 		w.WriteHeader(http.StatusBadRequest)
 		return
