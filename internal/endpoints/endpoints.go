@@ -10,6 +10,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/composed-ch/cloud-castle-backend/exoscale"
@@ -68,11 +69,13 @@ func (s *Stateful) Login(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadGateway)
 		return
 	}
-	var hashed string
-	err = s.Pool.QueryRow(
-		context.Background(),
-		"select password from account where name = $1",
-		authPayload.Username).Scan(&hashed)
+	var hashed, query string
+	if strings.Contains(authPayload.Username, "@") {
+		query = "select password from account where email = $1"
+	} else {
+		query = "select password from account where name = $1"
+	}
+	err = s.Pool.QueryRow(context.Background(), query, authPayload.Username).Scan(&hashed)
 	if err != nil {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
