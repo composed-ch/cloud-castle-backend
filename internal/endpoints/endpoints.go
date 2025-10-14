@@ -71,7 +71,7 @@ func (s *Stateful) Login(w http.ResponseWriter, r *http.Request) {
 	}
 	var hashed, query, username string
 	if strings.Contains(authPayload.Username, "@") {
-		query = "select name, password from account where udomail = $1"
+		query = "select name, password from account where email = $1"
 	} else {
 		query = "select name, password from account where name = $1"
 	}
@@ -81,7 +81,7 @@ func (s *Stateful) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err = bcrypt.CompareHashAndPassword([]byte(hashed), []byte(authPayload.Password)); err != nil {
-		fmt.Fprintf(os.Stderr, "login attempt for user %s failed: %v\n", authPayload.Username, err)
+		fmt.Fprintf(os.Stderr, "login attempt for user %s failed: %v\n", username, err)
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
