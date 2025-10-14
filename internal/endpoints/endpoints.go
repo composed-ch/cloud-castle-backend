@@ -69,13 +69,13 @@ func (s *Stateful) Login(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadGateway)
 		return
 	}
-	var hashed, query string
+	var hashed, query, username string
 	if strings.Contains(authPayload.Username, "@") {
-		query = "select password from account where email = $1"
+		query = "select name, password from account where udomail = $1"
 	} else {
-		query = "select password from account where name = $1"
+		query = "select name, password from account where name = $1"
 	}
-	err = s.Pool.QueryRow(context.Background(), query, authPayload.Username).Scan(&hashed)
+	err = s.Pool.QueryRow(context.Background(), query, authPayload.Username).Scan(&username, &hashed)
 	if err != nil {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
@@ -85,7 +85,7 @@ func (s *Stateful) Login(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
-	tokenStr, err := auth.IssueToken(authPayload.Username)
+	tokenStr, err := auth.IssueToken(username)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		w.WriteHeader(http.StatusInternalServerError)
