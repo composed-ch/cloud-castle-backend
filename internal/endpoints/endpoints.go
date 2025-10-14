@@ -210,7 +210,7 @@ func (s *Stateful) ResetPassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var accountId int
-	if err := s.Pool.QueryRow(context.Background(), "select id from account where email = $1", payload.Email).Scan(&accountId); err != nil {
+	if err := s.Pool.QueryRow(context.Background(), "select id from account where email = $1", strings.ToLower(payload.Email)).Scan(&accountId); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			fmt.Fprintf(os.Stderr, "no account found for password reset by email %s: %v\n", payload.Email, err)
 			w.WriteHeader(http.StatusCreated)
