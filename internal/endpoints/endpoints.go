@@ -275,6 +275,7 @@ func (s *Stateful) ResetPassword(w http.ResponseWriter, r *http.Request) {
 	}
 	fmt.Fprintf(os.Stderr, "sent password reset email to %s\n", payload.Email)
 }
+
 func (s *Stateful) NewPassword(w http.ResponseWriter, r *http.Request) {
 	type Payload struct {
 		Email    string `json:"email"`
@@ -293,7 +294,7 @@ func (s *Stateful) NewPassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var accountId int
-	err = s.Pool.QueryRow(context.Background(), "select id from account where email = $1", payload.Email).Scan(&accountId)
+	err = s.Pool.QueryRow(context.Background(), "select id from account where email = $1", strings.ToLower(payload.Email)).Scan(&accountId)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "no account found for email address %s: %v\n", payload.Email, err)
 		w.WriteHeader(http.StatusBadRequest)
