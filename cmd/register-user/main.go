@@ -8,6 +8,7 @@ import (
 
 	"github.com/composed-ch/cloud-castle-backend/internal/auth"
 	"github.com/composed-ch/cloud-castle-backend/internal/config"
+	"github.com/composed-ch/cloud-castle-backend/internal/db"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -21,6 +22,11 @@ func main() {
 
 	conn := config.MustGetDBConecction()
 	defer conn.Close(context.Background())
+
+	if _, err := db.LoadAccountByName(conn, *username); err == nil {
+		fmt.Fprintf(os.Stderr, "user with username '%s' already exists\n", *username)
+		os.Exit(1)
+	}
 
 	var userPassword string
 	var err error
@@ -38,11 +44,9 @@ func main() {
 		os.Exit(1)
 	}
 
-	_, err = conn.Exec(context.Background(),
-		"insert into account (name, role, password, tenant, email) values ($1, $2, $3, $4, $5)",
-		username, role, hashedPassword, tenant, email)
+	err = db.InsertAccount(conn, *username, *role, string(hashedPassword), *tenant, *email)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "insert user: %v\n", err)
+		fmt.Fprintf(os.Stderr, "insert user %v: %v\n", username, err)
 		os.Exit(1)
 	}
 }

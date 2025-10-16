@@ -9,7 +9,7 @@ import (
 
 	"github.com/composed-ch/cloud-castle-backend/internal/auth"
 	"github.com/composed-ch/cloud-castle-backend/internal/config"
-	"github.com/jackc/pgx/v5"
+	"github.com/composed-ch/cloud-castle-backend/internal/db"
 	"go.yaml.in/yaml/v3"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -40,6 +40,11 @@ func main() {
 	}
 
 	for _, user := range group.Users {
+
+		if _, err := db.LoadAccountByName(conn, user.Name); err == nil {
+			fmt.Fprintf(os.Stderr, "user with username '%s' already exists\n", user.Name)
+			continue
+		}
 		var userPassword string
 		if *password == "" {
 			userPassword, err = auth.RandomPasswordAlnum(32)
@@ -55,22 +60,12 @@ func main() {
 			fmt.Fprintf(os.Stderr, "hash password for user %v, skipping: %v\n", user, err)
 			continue
 		}
-		err = insertUser(conn, user.Name, *role, string(hashedPassword), *tenant, user.Email)
+		err = db.InsertAccount(conn, user.Name, *role, string(hashedPassword), *tenant, user.Email)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "insert user %v: %v\n", user, err)
 			continue
 		}
 	}
-}
-
-func insertUser(conn *pgx.Conn, name, role, hashedPassword, tenant, email string) error {
-	_, err := conn.Exec(context.Background(),
-		"insert into account (name, role, password, tenant, email) values ($1, $2, $3, $4, $5)",
-		name, role, hashedPassword, tenant, email)
-	if err != nil {
-		return fmt.Errorf("insert user: %v", err)
-	}
-	return nil
 }
 
 func readGroupFromFile(file string) (*Group, error) {
