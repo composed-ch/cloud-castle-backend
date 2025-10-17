@@ -69,6 +69,7 @@ func (s *Stateful) Login(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadGateway)
 		return
 	}
+	authPayload.Username = strings.ToLower(authPayload.Username)
 	var hashed, query, username string
 	if strings.Contains(authPayload.Username, "@") {
 		query = "select name, password from account where email = $1"
