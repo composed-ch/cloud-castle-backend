@@ -334,7 +334,7 @@ func (s *Stateful) NewPassword(w http.ResponseWriter, r *http.Request) {
 	if _, err := s.Pool.Exec(context.Background(), "delete from password_reset where account_id = $1", accountId); err != nil {
 		fmt.Fprintf(os.Stderr, "deleting password reset entries for accountId %d: %v", accountId, err)
 	}
-	fmt.Fprintf(os.Stderr, "updated password for accountId %d\n", accountId)
+	fmt.Fprintf(os.Stderr, "updated password for accountId %d (%s)\n", accountId, payload.Email)
 	w.WriteHeader(http.StatusNoContent)
 }
 
