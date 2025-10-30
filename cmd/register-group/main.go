@@ -30,8 +30,9 @@ func main() {
 		os.Exit(1)
 	}
 
+	ctx := context.Background()
 	conn := config.MustGetDBConecction()
-	defer conn.Close(context.Background())
+	defer conn.Close(ctx)
 
 	group, err := readGroupFromFile(*file)
 	if err != nil {
@@ -60,11 +61,12 @@ func main() {
 			fmt.Fprintf(os.Stderr, "hash password for user %v, skipping: %v\n", user, err)
 			continue
 		}
-		err = db.InsertAccount(conn, user.Name, *role, string(hashedPassword), *tenant, user.Email)
+		accountId, err := db.InsertAccount(ctx, conn, user.Name, *role, string(hashedPassword), *tenant, user.Email)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "insert user %v: %v\n", user, err)
 			continue
 		}
+		db.LogEvent(conn, ctx, db.ACCOUNT_CREATED, accountId, "name", user.Name)
 	}
 }
 

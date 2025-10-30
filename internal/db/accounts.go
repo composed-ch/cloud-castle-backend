@@ -20,15 +20,15 @@ type Account struct {
 	Email      string
 }
 
-// TODO: add proper context
-func InsertAccount(conn *pgx.Conn, name, role, hashedPassword, tenant, email string) error {
-	_, err := conn.Exec(context.TODO(),
-		"insert into account (name, role, password, tenant, email) values ($1, $2, $3, $4, $5)",
-		name, role, hashedPassword, tenant, email)
+func InsertAccount(ctx context.Context, conn *pgx.Conn, name, role, hashedPassword, tenant, email string) (int, error) {
+	var id int
+	err := conn.QueryRow(ctx,
+		"insert into account (name, role, password, tenant, email) values ($1, $2, $3, $4, $5) returning id",
+		name, role, hashedPassword, tenant, email).Scan(&id)
 	if err != nil {
-		return fmt.Errorf("insert user: %v", err)
+		return -1, fmt.Errorf("insert user: %v", err)
 	}
-	return nil
+	return id, nil
 }
 
 func LoadAccountIdByName(ctx context.Context, conn *pgx.Conn, name string) (int, error) {

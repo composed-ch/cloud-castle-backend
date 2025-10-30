@@ -20,8 +20,9 @@ func main() {
 	tenant := flag.String("tenant", "", "Exoscale tenant (account name)")
 	flag.Parse()
 
+	ctx := context.Background()
 	conn := config.MustGetDBConecction()
-	defer conn.Close(context.Background())
+	defer conn.Close(ctx)
 
 	if _, err := db.LoadAccountByName(conn, *username); err == nil {
 		fmt.Fprintf(os.Stderr, "user with username '%s' already exists\n", *username)
@@ -44,9 +45,10 @@ func main() {
 		os.Exit(1)
 	}
 
-	err = db.InsertAccount(conn, *username, *role, string(hashedPassword), *tenant, *email)
+	accountId, err := db.InsertAccount(ctx, conn, *username, *role, string(hashedPassword), *tenant, *email)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "insert user %v: %v\n", username, err)
 		os.Exit(1)
 	}
+	db.LogEvent(conn, ctx, db.ACCOUNT_CREATED, accountId, "name", *username)
 }
