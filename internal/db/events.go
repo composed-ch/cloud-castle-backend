@@ -22,20 +22,19 @@ const (
 	PASSWORD_RESET     Kind = "password_reset"
 )
 
-func LogEvent(conn *pgx.Conn, ctx context.Context, kind Kind, accountId int, infoKey, infoVal string) error {
+func LogEvent(conn *pgx.Conn, ctx context.Context, kind Kind, accountId int, infoKey, infoVal string) {
 	var err error
 	now := time.Now()
 	nowStr := now.Format(time.RFC3339)
 	if infoKey != "" || infoVal != "" {
-		fmt.Fprintf(os.Stdout, "%s event '%s' by account_id %d (%s=%s)", nowStr, kind, accountId, infoKey, infoVal)
-		_, err = conn.Exec(ctx, "insert into event_log (account_id, kind, happened, info_key, info_val)",
-			kind, accountId, now, infoKey, infoVal)
+		fmt.Fprintf(os.Stdout, "%s event '%s' by account_id %d (%s=%s)\n", nowStr, kind, accountId, infoKey, infoVal)
+		_, err = conn.Exec(ctx, "insert into event_log (account_id, kind, happened, info_key, info_val) values ($1, $2, $3, $4, $5)",
+			accountId, kind, now, infoKey, infoVal)
 	} else {
-		fmt.Fprintf(os.Stdout, "%s event '%s' by account_id %d", nowStr, kind, accountId)
-		_, err = conn.Exec(ctx, "insert into event_log (account_id, kind, happened)", kind, accountId, now)
+		fmt.Fprintf(os.Stdout, "%s event '%s' by account_id %d\n", nowStr, kind, accountId)
+		_, err = conn.Exec(ctx, "insert into event_log (account_id, kind, happened) values ($1, $2, $3)", accountId, kind, now)
 	}
 	if err != nil {
-		return fmt.Errorf("log %s event: %v", kind, err)
+		fmt.Fprintf(os.Stderr, "log %s event: %v\n", kind, err)
 	}
-	return nil
 }

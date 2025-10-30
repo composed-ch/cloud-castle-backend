@@ -95,3 +95,17 @@ Apply the migration:
 ```sh
 goose up
 ```
+
+## Backup & Restore
+
+Create a backup of the `cloud_castle` database on the server:
+
+    sudo -u postgres pg_dump --clean cloud_castle | gzip > cloud_castle.sql.gz
+
+Copy it down to the localhost:
+
+    scp patrick@cloud-castle-mvp:cloud_castle.sql.gz .
+
+Restore from dump:
+
+    gunzip -c cloud_castle.sql.gz | sudo -u postgres psql cloud_castle

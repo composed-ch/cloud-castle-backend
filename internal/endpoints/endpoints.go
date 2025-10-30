@@ -192,7 +192,7 @@ func (s *Stateful) StartInstance(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "load account by name '%s': %v", owner, err)
 		} else {
-			db.LogEvent(conn, r.Context(), db.INSTANCE_START, account.Id, "username", owner)
+			db.LogEvent(conn, r.Context(), db.INSTANCE_START, account.Id, "instance", id)
 		}
 	}
 	w.WriteHeader(200)
@@ -228,7 +228,7 @@ func (s *Stateful) StopInstance(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "load account by name '%s': %v", owner, err)
 		} else {
-			db.LogEvent(conn, r.Context(), db.INSTANCE_STOP, account.Id, "username", owner)
+			db.LogEvent(conn, r.Context(), db.INSTANCE_STOP, account.Id, "instance", id)
 		}
 	}
 
