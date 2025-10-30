@@ -11,6 +11,7 @@ import (
 )
 
 type Account struct {
+	Id         int
 	Name       string
 	Role       string
 	Registered time.Time
@@ -32,11 +33,13 @@ func InsertAccount(conn *pgx.Conn, name, role, hashedPassword, tenant, email str
 func LoadAccountByName(conn *pgx.Conn, name string) (*Account, error) {
 	var registered sql.NullTime
 	var role, password, tenant, email sql.NullString
-	err := conn.QueryRow(context.Background(), "select role, registered, password, tenant, email from account where name = $1", name).Scan(&role, &registered, &password, &tenant, &email)
+	var id sql.NullInt32
+	err := conn.QueryRow(context.Background(), "select id, role, registered, password, tenant, email from account where name = $1", name).Scan(&id, &role, &registered, &password, &tenant, &email)
 	if err != nil {
 		return nil, fmt.Errorf(`load account by name "%s": %v`, name, err)
 	}
 	return &Account{
+		Id:         int(id.Int32),
 		Name:       name,
 		Role:       role.String,
 		Registered: registered.Time,

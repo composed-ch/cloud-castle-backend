@@ -16,6 +16,7 @@ import (
 	"github.com/composed-ch/cloud-castle-backend/exoscale"
 	"github.com/composed-ch/cloud-castle-backend/internal/auth"
 	"github.com/composed-ch/cloud-castle-backend/internal/config"
+	"github.com/composed-ch/cloud-castle-backend/internal/db"
 	"github.com/composed-ch/cloud-castle-backend/internal/mailing"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -49,6 +50,14 @@ func (s *Stateful) GetAPIAccess(username string) (*exoscale.APIAccess, error) {
 	return exoscale.NewAPIAccess(username, zone, key, secret), nil
 }
 
+func (s *Stateful) GetConnection(ctx context.Context) (*pgx.Conn, error) {
+	conn, err := s.Pool.Acquire(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("get connection: %v", err)
+	}
+	return conn.Conn(), nil
+}
+
 type authRequest struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
@@ -59,30 +68,38 @@ type authResponse struct {
 }
 
 func (s *Stateful) Login(w http.ResponseWriter, r *http.Request) {
+	ctx := context.TODO()
+	conn, err := s.GetConnection(ctx)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
 	var authPayload authRequest
 	payload, err := io.ReadAll(r.Body)
 	if err != nil {
-		w.WriteHeader(http.StatusBadGateway)
+		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 	if err = json.Unmarshal(payload, &authPayload); err != nil {
-		w.WriteHeader(http.StatusBadGateway)
+		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 	authPayload.Username = strings.ToLower(authPayload.Username)
+	var accountId int
 	var hashed, query, username string
 	if strings.Contains(authPayload.Username, "@") {
-		query = "select name, password from account where email = $1"
+		query = "select id, name, password from account where email = $1"
 	} else {
-		query = "select name, password from account where name = $1"
+		query = "select id, name, password from account where name = $1"
 	}
-	err = s.Pool.QueryRow(context.Background(), query, authPayload.Username).Scan(&username, &hashed)
+	err = s.Pool.QueryRow(ctx, query, authPayload.Username).Scan(&accountId, &username, &hashed)
 	if err != nil {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
 	if err = bcrypt.CompareHashAndPassword([]byte(hashed), []byte(authPayload.Password)); err != nil {
 		fmt.Fprintf(os.Stderr, "login attempt for user %s failed: %v\n", username, err)
+		db.LogEvent(conn, ctx, db.LOGIN_FAILURE, accountId, "username", username)
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
@@ -95,7 +112,7 @@ func (s *Stateful) Login(w http.ResponseWriter, r *http.Request) {
 	if tokenData, err := json.Marshal(authResponse{Token: tokenStr}); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 	} else {
-		fmt.Fprintf(os.Stderr, "successful login attempt for user %s\n", authPayload.Username)
+		db.LogEvent(conn, ctx, db.LOGIN_SUCCESS, accountId, "username", username)
 		w.Write(tokenData)
 	}
 }
@@ -168,7 +185,16 @@ func (s *Stateful) StartInstance(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	fmt.Fprintf(os.Stderr, "user %s started instance %s\n", owner, id)
+	if conn, err := s.GetConnection(r.Context()); err != nil {
+		fmt.Fprintf(os.Stderr, "get connection: %v", err)
+	} else {
+		account, err := db.LoadAccountByName(conn, owner)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "load account by name '%s': %v", owner, err)
+		} else {
+			db.LogEvent(conn, r.Context(), db.INSTANCE_START, account.Id, "username", owner)
+		}
+	}
 	w.WriteHeader(200)
 }
 
@@ -195,10 +221,21 @@ func (s *Stateful) StopInstance(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	fmt.Fprintf(os.Stderr, "user %s stopped instance %s\n", owner, id)
+	if conn, err := s.GetConnection(r.Context()); err != nil {
+		fmt.Fprintf(os.Stderr, "get connection: %v", err)
+	} else {
+		account, err := db.LoadAccountByName(conn, owner)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "load account by name '%s': %v", owner, err)
+		} else {
+			db.LogEvent(conn, r.Context(), db.INSTANCE_STOP, account.Id, "username", owner)
+		}
+	}
+
 	w.WriteHeader(200)
 }
 
+// TODO: log password request
 func (s *Stateful) ResetPassword(w http.ResponseWriter, r *http.Request) {
 	type Payload struct {
 		Email string `json:"email"`
@@ -277,6 +314,7 @@ func (s *Stateful) ResetPassword(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(os.Stderr, "sent password reset email to %s\n", payload.Email)
 }
 
+// TODO: log password reset
 func (s *Stateful) NewPassword(w http.ResponseWriter, r *http.Request) {
 	type Payload struct {
 		Email    string `json:"email"`

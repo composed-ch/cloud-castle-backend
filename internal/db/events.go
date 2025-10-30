@@ -12,6 +12,8 @@ import (
 type Kind string
 
 const (
+	ACCOUNT_CREATED    Kind = "account_created"
+	ACCOUNT_DELETED    Kind = "account_deleted"
 	LOGIN_SUCCESS      Kind = "login_success"
 	LOGIN_FAILURE      Kind = "login_failure"
 	INSTANCE_START     Kind = "instance_start"
