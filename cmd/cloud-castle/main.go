@@ -16,6 +16,7 @@ func main() {
 	state, err := endpoints.NewStateful(&cfg)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "initializing state: %v\n", err)
+		os.Exit(1)
 	}
 
 	mux := http.NewServeMux()
