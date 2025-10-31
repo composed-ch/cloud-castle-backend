@@ -68,8 +68,7 @@ type authResponse struct {
 }
 
 func (s *Stateful) Login(w http.ResponseWriter, r *http.Request) {
-	ctx := context.TODO()
-	conn, err := s.GetConnection(ctx)
+	conn, err := s.GetConnection(r.Context())
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -92,14 +91,14 @@ func (s *Stateful) Login(w http.ResponseWriter, r *http.Request) {
 	} else {
 		query = "select id, name, password from account where name = $1"
 	}
-	err = s.Pool.QueryRow(ctx, query, authPayload.Username).Scan(&accountId, &username, &hashed)
+	err = s.Pool.QueryRow(r.Context(), query, authPayload.Username).Scan(&accountId, &username, &hashed)
 	if err != nil {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
 	if err = bcrypt.CompareHashAndPassword([]byte(hashed), []byte(authPayload.Password)); err != nil {
 		fmt.Fprintf(os.Stderr, "login attempt for user %s failed: %v\n", username, err)
-		db.LogEvent(conn, ctx, db.LOGIN_FAILURE, accountId, "username", username)
+		db.LogEvent(conn, r.Context(), db.LOGIN_FAILURE, accountId, "username", username)
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
@@ -112,7 +111,7 @@ func (s *Stateful) Login(w http.ResponseWriter, r *http.Request) {
 	if tokenData, err := json.Marshal(authResponse{Token: tokenStr}); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 	} else {
-		db.LogEvent(conn, ctx, db.LOGIN_SUCCESS, accountId, "username", username)
+		db.LogEvent(conn, r.Context(), db.LOGIN_SUCCESS, accountId, "username", username)
 		w.Write(tokenData)
 	}
 }
