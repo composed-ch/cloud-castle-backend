@@ -7,7 +7,7 @@ import (
 	"os"
 
 	"github.com/composed-ch/cloud-castle-backend/internal/config"
-	"github.com/jackc/pgx/v5"
+	"github.com/composed-ch/cloud-castle-backend/internal/endpoints"
 )
 
 func main() {
@@ -19,16 +19,14 @@ func main() {
 	flag.Parse()
 
 	cfg := config.MustReadConfig()
-	url := cfg.BuildDatabaseURL()
-	conn, err := pgx.Connect(context.Background(), url)
+	state, err := endpoints.NewStateful(&cfg)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "connect to database: %s\n", err)
+		fmt.Fprintf(os.Stderr, "initializing state: %v\n", err)
 		os.Exit(1)
 	}
-	defer conn.Close(context.Background())
 
 	var accountId uint
-	err = conn.QueryRow(
+	err = state.Pool.QueryRow(
 		context.Background(),
 		"select id from account where name = $1",
 		username).Scan(&accountId)
@@ -37,7 +35,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	_, err = conn.Exec(context.Background(),
+	_, err = state.Pool.Exec(context.Background(),
 		"insert into api_key (zone, api_key, api_secret, tenant) values ($1, $2, $3, $4)",
 		zone, apiKey, apiSecret, tenant)
 	if err != nil {
