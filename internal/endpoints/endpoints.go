@@ -69,6 +69,7 @@ type authResponse struct {
 
 func (s *Stateful) Login(w http.ResponseWriter, r *http.Request) {
 	conn, err := s.GetConnection(r.Context())
+	defer conn.Close(r.Context())
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
