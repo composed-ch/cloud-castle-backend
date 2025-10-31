@@ -28,5 +28,5 @@ func main() {
 	mux.HandleFunc("GET /instance/{id}/stop", auth.Authenticated(state.StopInstance))
 	mux.HandleFunc("POST /password/reset", state.ResetPassword)
 	mux.HandleFunc("POST /password/new", state.NewPassword)
-	http.ListenAndServe("localhost:8080", middleware.AllowCORS(mux))
+	http.ListenAndServe("127.0.0.1:8080", middleware.AllowCORS(mux))
 }
