@@ -10,6 +10,7 @@ import (
 	"github.com/composed-ch/cloud-castle-backend/internal/auth"
 	"github.com/composed-ch/cloud-castle-backend/internal/config"
 	"github.com/composed-ch/cloud-castle-backend/internal/db"
+	"github.com/composed-ch/cloud-castle-backend/internal/endpoints"
 	"go.yaml.in/yaml/v3"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -31,8 +32,12 @@ func main() {
 	}
 
 	ctx := context.Background()
-	conn := config.MustGetDBConecction()
-	defer conn.Close(ctx)
+	cfg := config.MustReadConfig()
+	state, err := endpoints.NewStateful(&cfg)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "initialize state: %v", err)
+		os.Exit(1)
+	}
 
 	group, err := readGroupFromFile(*file)
 	if err != nil {
@@ -42,7 +47,7 @@ func main() {
 
 	for _, user := range group.Users {
 
-		if _, err := db.LoadAccountByName(conn, user.Name); err == nil {
+		if _, err := db.LoadAccountByName(ctx, state.Pool, user.Name); err == nil {
 			fmt.Fprintf(os.Stderr, "user with username '%s' already exists\n", user.Name)
 			continue
 		}
@@ -61,12 +66,12 @@ func main() {
 			fmt.Fprintf(os.Stderr, "hash password for user %v, skipping: %v\n", user, err)
 			continue
 		}
-		accountId, err := db.InsertAccount(ctx, conn, user.Name, *role, string(hashedPassword), *tenant, user.Email)
+		accountId, err := db.InsertAccount(ctx, state.Pool, user.Name, *role, string(hashedPassword), *tenant, user.Email)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "insert user %v: %v\n", user, err)
 			continue
 		}
-		db.LogEvent(conn, ctx, db.ACCOUNT_CREATED, accountId, "name", user.Name)
+		db.LogEvent(ctx, state.Pool, db.ACCOUNT_CREATED, accountId, "name", user.Name)
 	}
 }
 

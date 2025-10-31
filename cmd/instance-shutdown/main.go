@@ -36,13 +36,7 @@ func main() {
 	}
 
 	ctx := context.Background()
-	conn, err := state.GetConnection(ctx)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "get db connection: %v\n", err)
-		os.Exit(1)
-	}
-
-	accountId, err := db.LoadAccountIdByName(ctx, conn, *user)
+	accountId, err := db.LoadAccountIdByName(ctx, state.Pool, *user)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "load accountId by name '%s': %v\n", *user, err)
 		os.Exit(1)
@@ -72,7 +66,7 @@ func main() {
 		if err := api.StopInstance(id); err != nil {
 			fmt.Fprintf(os.Stderr, "shutdown instance %s: %v\n", id, err)
 		} else {
-			db.LogEvent(conn, ctx, db.INSTANCE_STOP, accountId, "instance", id)
+			db.LogEvent(ctx, state.Pool, db.INSTANCE_STOP, accountId, "instance", id)
 		}
 	}
 }

@@ -9,6 +9,7 @@ import (
 	"github.com/composed-ch/cloud-castle-backend/internal/auth"
 	"github.com/composed-ch/cloud-castle-backend/internal/config"
 	"github.com/composed-ch/cloud-castle-backend/internal/db"
+	"github.com/composed-ch/cloud-castle-backend/internal/endpoints"
 )
 
 func main() {
@@ -21,10 +22,15 @@ func main() {
 		os.Exit(1)
 	}
 
-	conn := config.MustGetDBConecction()
-	defer conn.Close(context.Background())
+	ctx := context.Background()
+	cfg := config.MustReadConfig()
+	state, err := endpoints.NewStateful(&cfg)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "initialize state: %v", err)
+		os.Exit(1)
+	}
 
-	account, err := db.LoadAccountByName(conn, *name)
+	account, err := db.LoadAccountByName(ctx, state.Pool, *name)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "load account by name '%s': %v\n", *name, err)
 		os.Exit(1)
@@ -35,7 +41,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err = db.UpdatePassword(conn, account.Name, *password); err != nil {
+	if err = db.UpdatePassword(ctx, state.Pool, account.Name, *password); err != nil {
 		fmt.Fprintf(os.Stderr, "update password for account '%s': %v\n", account.Name, err)
 	}
 }

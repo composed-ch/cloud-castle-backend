@@ -50,14 +50,6 @@ func (s *Stateful) GetAPIAccess(username string) (*exoscale.APIAccess, error) {
 	return exoscale.NewAPIAccess(username, zone, key, secret), nil
 }
 
-func (s *Stateful) GetConnection(ctx context.Context) (*pgx.Conn, error) {
-	conn, err := s.Pool.Acquire(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("get connection: %v", err)
-	}
-	return conn.Conn(), nil
-}
-
 type authRequest struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
@@ -68,12 +60,6 @@ type authResponse struct {
 }
 
 func (s *Stateful) Login(w http.ResponseWriter, r *http.Request) {
-	//conn, err := s.GetConnection(r.Context())
-	//defer conn.Close(r.Context())
-	//if err != nil {
-	//	w.WriteHeader(http.StatusInternalServerError)
-	//	return
-	//}
 	var authPayload authRequest
 	payload, err := io.ReadAll(r.Body)
 	if err != nil {
@@ -99,7 +85,7 @@ func (s *Stateful) Login(w http.ResponseWriter, r *http.Request) {
 	}
 	if err = bcrypt.CompareHashAndPassword([]byte(hashed), []byte(authPayload.Password)); err != nil {
 		fmt.Fprintf(os.Stderr, "login attempt for user %s failed: %v\n", username, err)
-		//db.LogEvent(conn, r.Context(), db.LOGIN_FAILURE, accountId, "username", username)
+		db.LogEvent(r.Context(), s.Pool, db.LOGIN_FAILURE, accountId, "username", username)
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
@@ -112,7 +98,7 @@ func (s *Stateful) Login(w http.ResponseWriter, r *http.Request) {
 	if tokenData, err := json.Marshal(authResponse{Token: tokenStr}); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 	} else {
-		//db.LogEvent(conn, r.Context(), db.LOGIN_SUCCESS, accountId, "username", username)
+		db.LogEvent(r.Context(), s.Pool, db.LOGIN_SUCCESS, accountId, "username", username)
 		w.Write(tokenData)
 	}
 }
@@ -185,15 +171,11 @@ func (s *Stateful) StartInstance(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	if conn, err := s.GetConnection(r.Context()); err != nil {
-		fmt.Fprintf(os.Stderr, "get connection: %v", err)
+	accountId, err := db.LoadAccountIdByName(r.Context(), s.Pool, owner)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "load account by name '%s': %v", owner, err)
 	} else {
-		accountId, err := db.LoadAccountIdByName(r.Context(), conn, owner)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "load account by name '%s': %v", owner, err)
-		} else {
-			db.LogEvent(conn, r.Context(), db.INSTANCE_START, accountId, "instance", id)
-		}
+		db.LogEvent(r.Context(), s.Pool, db.INSTANCE_START, accountId, "instance", id)
 	}
 	w.WriteHeader(200)
 }
@@ -221,15 +203,11 @@ func (s *Stateful) StopInstance(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	if conn, err := s.GetConnection(r.Context()); err != nil {
-		fmt.Fprintf(os.Stderr, "get connection: %v", err)
+	accountId, err := db.LoadAccountIdByName(r.Context(), s.Pool, owner)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "load account by name '%s': %v", owner, err)
 	} else {
-		accountId, err := db.LoadAccountIdByName(r.Context(), conn, owner)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "load account by name '%s': %v", owner, err)
-		} else {
-			db.LogEvent(conn, r.Context(), db.INSTANCE_STOP, accountId, "instance", id)
-		}
+		db.LogEvent(r.Context(), s.Pool, db.INSTANCE_STOP, accountId, "instance", id)
 	}
 	w.WriteHeader(200)
 }
@@ -245,13 +223,7 @@ func (s *Stateful) ResetPassword(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	conn, err := s.GetConnection(r.Context())
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "get db connection: %v", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	accountId, err := db.LoadAccountIdByEmail(r.Context(), conn, payload.Email)
+	accountId, err := db.LoadAccountIdByEmail(r.Context(), s.Pool, payload.Email)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			fmt.Fprintf(os.Stderr, "no account found for password reset by email %s: %v\n", payload.Email, err)
@@ -316,7 +288,7 @@ func (s *Stateful) ResetPassword(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	db.LogEvent(conn, r.Context(), db.PASSWORD_REQUESTED, accountId, "email", payload.Email)
+	db.LogEvent(r.Context(), s.Pool, db.PASSWORD_REQUESTED, accountId, "email", payload.Email)
 }
 
 func (s *Stateful) NewPassword(w http.ResponseWriter, r *http.Request) {
@@ -336,13 +308,7 @@ func (s *Stateful) NewPassword(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	conn, err := s.GetConnection(r.Context())
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "get connection: %v", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	accountId, err := db.LoadAccountIdByEmail(r.Context(), conn, payload.Email)
+	accountId, err := db.LoadAccountIdByEmail(r.Context(), s.Pool, payload.Email)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "no account found for email address %s: %v\n", payload.Email, err)
 		w.WriteHeader(http.StatusBadRequest)
@@ -381,7 +347,7 @@ func (s *Stateful) NewPassword(w http.ResponseWriter, r *http.Request) {
 	if _, err := s.Pool.Exec(r.Context(), "delete from password_reset where account_id = $1", accountId); err != nil {
 		fmt.Fprintf(os.Stderr, "deleting password reset entries for accountId %d: %v", accountId, err)
 	}
-	db.LogEvent(conn, r.Context(), db.PASSWORD_RESET, accountId, "email", payload.Email)
+	db.LogEvent(r.Context(), s.Pool, db.PASSWORD_RESET, accountId, "email", payload.Email)
 	w.WriteHeader(http.StatusNoContent)
 }
 

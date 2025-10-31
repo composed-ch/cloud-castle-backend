@@ -6,7 +6,7 @@ import (
 	"os"
 
 	"github.com/caarlos0/env/v11"
-	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type Config struct {
@@ -34,13 +34,13 @@ func MustReadConfig() Config {
 	return config
 }
 
-func MustGetDBConecction() *pgx.Conn {
+func MustGetConnectionPool() *pgxpool.Pool {
 	cfg := MustReadConfig()
 	url := cfg.BuildDatabaseURL()
-	conn, err := pgx.Connect(context.Background(), url)
+	pool, err := pgxpool.New(context.Background(), cfg.BuildDatabaseURL())
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "connect to database: %s\n", url)
+		fmt.Fprintf(os.Stderr, "connect to database: %s: %v\n", url, err)
 		os.Exit(1)
 	}
-	return conn
+	return pool
 }
