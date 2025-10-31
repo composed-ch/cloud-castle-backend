@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/caarlos0/env/v11"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -37,10 +38,21 @@ func MustReadConfig() Config {
 func MustGetConnectionPool() *pgxpool.Pool {
 	cfg := MustReadConfig()
 	url := cfg.BuildDatabaseURL()
-	pool, err := pgxpool.New(context.Background(), cfg.BuildDatabaseURL())
+	pool, err := pgxpool.New(context.Background(), url)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "connect to database: %s: %v\n", url, err)
+		fmt.Fprintf(os.Stderr, "create database connection pool '%s': %v\n", url, err)
 		os.Exit(1)
 	}
 	return pool
+}
+
+func MustGetConnection() *pgx.Conn {
+	cfg := MustReadConfig()
+	url := cfg.BuildDatabaseURL()
+	conn, err := pgx.Connect(context.Background(), url)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "create database connection '%s': %v\n", url, err)
+		os.Exit(1)
+	}
+	return conn
 }
