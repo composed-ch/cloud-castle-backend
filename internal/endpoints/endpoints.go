@@ -68,12 +68,12 @@ type authResponse struct {
 }
 
 func (s *Stateful) Login(w http.ResponseWriter, r *http.Request) {
-	conn, err := s.GetConnection(r.Context())
-	defer conn.Close(r.Context())
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
+	//conn, err := s.GetConnection(r.Context())
+	//defer conn.Close(r.Context())
+	//if err != nil {
+	//	w.WriteHeader(http.StatusInternalServerError)
+	//	return
+	//}
 	var authPayload authRequest
 	payload, err := io.ReadAll(r.Body)
 	if err != nil {
@@ -99,7 +99,7 @@ func (s *Stateful) Login(w http.ResponseWriter, r *http.Request) {
 	}
 	if err = bcrypt.CompareHashAndPassword([]byte(hashed), []byte(authPayload.Password)); err != nil {
 		fmt.Fprintf(os.Stderr, "login attempt for user %s failed: %v\n", username, err)
-		db.LogEvent(conn, r.Context(), db.LOGIN_FAILURE, accountId, "username", username)
+		//db.LogEvent(conn, r.Context(), db.LOGIN_FAILURE, accountId, "username", username)
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
@@ -112,7 +112,7 @@ func (s *Stateful) Login(w http.ResponseWriter, r *http.Request) {
 	if tokenData, err := json.Marshal(authResponse{Token: tokenStr}); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 	} else {
-		db.LogEvent(conn, r.Context(), db.LOGIN_SUCCESS, accountId, "username", username)
+		//db.LogEvent(conn, r.Context(), db.LOGIN_SUCCESS, accountId, "username", username)
 		w.Write(tokenData)
 	}
 }
