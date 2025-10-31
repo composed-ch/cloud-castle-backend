@@ -32,6 +32,7 @@ func main() {
 
 	ctx := context.Background()
 	pool := config.MustGetConnectionPool()
+	defer pool.Close()
 
 	group, err := readGroupFromFile(*file)
 	if err != nil {

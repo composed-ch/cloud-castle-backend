@@ -22,6 +22,7 @@ func main() {
 
 	ctx := context.Background()
 	pool := config.MustGetConnectionPool()
+	defer pool.Close()
 
 	if _, err := db.LoadAccountByName(ctx, pool, *username); err == nil {
 		fmt.Fprintf(os.Stderr, "user with username '%s' already exists\n", *username)

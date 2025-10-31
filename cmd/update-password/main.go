@@ -23,6 +23,7 @@ func main() {
 
 	ctx := context.Background()
 	pool := config.MustGetConnectionPool()
+	defer pool.Close()
 
 	account, err := db.LoadAccountByName(ctx, pool, *name)
 	if err != nil {

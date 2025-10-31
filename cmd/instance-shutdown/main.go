@@ -24,6 +24,7 @@ func main() {
 
 	cfg := config.MustReadConfig()
 	state, err := endpoints.NewStateful(&cfg)
+	defer state.Pool.Close()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "initializing state: %v\n", err)
 		os.Exit(1)
