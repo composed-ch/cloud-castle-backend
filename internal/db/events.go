@@ -23,15 +23,24 @@ const (
 )
 
 func LogEvent(ctx context.Context, pool *pgxpool.Pool, kind Kind, accountId int, infoKey, infoVal string) {
+	var logWithTimestamp bool = os.Getenv(("LOG_WITH_TIMESTAMP")) == "true"
 	var err error
 	now := time.Now()
 	nowStr := now.Format(time.RFC3339)
 	if infoKey != "" || infoVal != "" {
-		fmt.Fprintf(os.Stdout, "%s event '%s' by account_id %d (%s=%s)\n", nowStr, kind, accountId, infoKey, infoVal)
+		if logWithTimestamp {
+			fmt.Fprintf(os.Stdout, "%s event '%s' by account_id %d (%s=%s)\n", nowStr, kind, accountId, infoKey, infoVal)
+		} else {
+			fmt.Fprintf(os.Stdout, "event '%s' by account_id %d (%s=%s)\n", kind, accountId, infoKey, infoVal)
+		}
 		_, err = pool.Exec(ctx, "insert into event_log (account_id, kind, happened, info_key, info_val) values ($1, $2, $3, $4, $5)",
 			accountId, kind, now, infoKey, infoVal)
 	} else {
-		fmt.Fprintf(os.Stdout, "%s event '%s' by account_id %d\n", nowStr, kind, accountId)
+		if logWithTimestamp {
+			fmt.Fprintf(os.Stdout, "%s event '%s' by account_id %d\n", nowStr, kind, accountId)
+		} else {
+			fmt.Fprintf(os.Stdout, "event '%s' by account_id %d\n", kind, accountId)
+		}
 		_, err = pool.Exec(ctx, "insert into event_log (account_id, kind, happened) values ($1, $2, $3)", accountId, kind, now)
 	}
 	if err != nil {
