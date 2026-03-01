@@ -7,6 +7,7 @@ import (
 
 var allowedOrigins []string = []string{
 	"http://localhost:4200",
+	"http://127.0.0.1:4200",
 	"https://app.cloud-castle.ch",
 }
 

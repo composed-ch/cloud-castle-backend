@@ -42,7 +42,7 @@ func (s *Stateful) GetAPIAccess(username string) (*exoscale.APIAccess, error) {
 		`select zone, api_key, api_secret
 		from api_key
 		inner join account on api_key.tenant = account.tenant
-		where account.name = $1
+		where lower(account.name) = lower($1)
 		limit 1`, username).Scan(&zone, &key, &secret)
 	if err != nil {
 		return nil, fmt.Errorf("get API key for %s: %w", username, err)
@@ -74,9 +74,9 @@ func (s *Stateful) Login(w http.ResponseWriter, r *http.Request) {
 	var accountId int
 	var hashed, query, username string
 	if strings.Contains(authPayload.Username, "@") {
-		query = "select id, name, password from account where email = $1"
+		query = "select id, name, password from account where lower(email) = lower($1)"
 	} else {
-		query = "select id, name, password from account where name = $1"
+		query = "select id, name, password from account where lower(name) = lower($1)"
 	}
 	err = s.Pool.QueryRow(r.Context(), query, authPayload.Username).Scan(&accountId, &username, &hashed)
 	if err != nil {

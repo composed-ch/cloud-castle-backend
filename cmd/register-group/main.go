@@ -41,7 +41,6 @@ func main() {
 	}
 
 	for _, user := range group.Users {
-
 		if _, err := db.LoadAccountByName(ctx, pool, user.Name); err == nil {
 			fmt.Fprintf(os.Stderr, "user with username '%s' already exists\n", user.Name)
 			continue
