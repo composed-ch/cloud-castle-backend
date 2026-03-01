@@ -42,7 +42,7 @@ func (s *Stateful) GetAPIAccess(username string) (*exoscale.APIAccess, error) {
 		`select zone, api_key, api_secret
 		from api_key
 		inner join account on api_key.tenant = account.tenant
-		where account.name = $1
+		where lower(account.name) = lower($1)
 		limit 1`, username).Scan(&zone, &key, &secret)
 	if err != nil {
 		return nil, fmt.Errorf("get API key for %s: %w", username, err)

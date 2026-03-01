@@ -23,7 +23,7 @@ type Account struct {
 func InsertAccount(ctx context.Context, pool *pgxpool.Pool, name, role, hashedPassword, tenant, email string) (int, error) {
 	var id int
 	err := pool.QueryRow(ctx,
-		"insert into account (name, role, password, tenant, email) values ($1, $2, $3, $4, $5) returning id",
+		"insert into account (name, role, password, tenant, email) values (lower($1), $2, $3, $4, lower($5)) returning id",
 		name, role, hashedPassword, tenant, email).Scan(&id)
 	if err != nil {
 		return -1, fmt.Errorf("insert user: %v", err)
@@ -33,7 +33,7 @@ func InsertAccount(ctx context.Context, pool *pgxpool.Pool, name, role, hashedPa
 
 func LoadAccountIdByName(ctx context.Context, pool *pgxpool.Pool, name string) (int, error) {
 	var id int
-	if err := pool.QueryRow(ctx, "select id from account where name = $1", name).Scan(&id); err != nil {
+	if err := pool.QueryRow(ctx, "select id from account where lower(name) = lower($1)", name).Scan(&id); err != nil {
 		return -1, fmt.Errorf("load account id by name '%s': %v", name, err)
 	}
 	return id, nil
@@ -41,7 +41,7 @@ func LoadAccountIdByName(ctx context.Context, pool *pgxpool.Pool, name string) (
 
 func LoadAccountIdByEmail(ctx context.Context, pool *pgxpool.Pool, email string) (int, error) {
 	var id int
-	if err := pool.QueryRow(ctx, "select id from account where email = $1", email).Scan(&id); err != nil {
+	if err := pool.QueryRow(ctx, "select id from account where lower(email) = lower($1)", email).Scan(&id); err != nil {
 		return -1, fmt.Errorf("load account id by name '%s': %v", email, err)
 	}
 	return id, nil
@@ -52,7 +52,7 @@ func LoadAccountByName(ctx context.Context, pool *pgxpool.Pool, name string) (*A
 	var role, password, tenant, email sql.NullString
 	var id sql.NullInt32
 	err := pool.QueryRow(context.TODO(),
-		"select id, role, registered, password, tenant, email from account where name = $1",
+		"select id, role, registered, password, tenant, email from account where lower(name) = lower($1)",
 		name).Scan(&id, &role, &registered, &password, &tenant, &email)
 	if err != nil {
 		return nil, fmt.Errorf(`load account by name "%s": %v`, name, err)
@@ -73,7 +73,8 @@ func UpdatePassword(ctx context.Context, pool *pgxpool.Pool, name, password stri
 	if err != nil {
 		return fmt.Errorf("hash password: %v", err)
 	}
-	_, err = pool.Exec(ctx, "update account set password = $1 where name = $2", hashedPassword, name)
+	_, err = pool.Exec(ctx, "update account set password = $1 where lower(name) = lower($2)",
+		hashedPassword, name)
 	if err != nil {
 		return fmt.Errorf("update account with name '%s': %v", name, err)
 	}
