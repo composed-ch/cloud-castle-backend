@@ -74,9 +74,9 @@ func (s *Stateful) Login(w http.ResponseWriter, r *http.Request) {
 	var accountId int
 	var hashed, query, username string
 	if strings.Contains(authPayload.Username, "@") {
-		query = "select id, name, password from account where email = $1"
+		query = "select id, name, password from account where lower(email) = lower($1)"
 	} else {
-		query = "select id, name, password from account where name = $1"
+		query = "select id, name, password from account where lower(name) = lower($1)"
 	}
 	err = s.Pool.QueryRow(r.Context(), query, authPayload.Username).Scan(&accountId, &username, &hashed)
 	if err != nil {
